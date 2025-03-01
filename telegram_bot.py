@@ -30,7 +30,7 @@ async def handle_message(update: Update, context: CallbackContext):
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": user_message}]
         )
-        chat_response = response["choices"][0]["message"]["content"]
+        chat_response = response.choices[0].message.content
 
         # Enviar respuesta al usuario
         await update.message.reply_text(chat_response)
