@@ -31,7 +31,14 @@ INFO = cargar_informacion()
 
 # Función para mejorar el mensaje antes de enviarlo
 def mejorar_mensaje(mensaje):
-    prompt = f"Mejora este mensaje manteniendo un tono cálido, persuasivo y alineado con la misión del padre Mateo:\n\n{mensaje}"
+    def mejorar_mensaje(mensaje):
+    prompt = (
+        "Mejora este mensaje asegurando que sea cálido, persuasivo y que motive a donar o comprar productos solidarios. "
+        "Evita respuestas genéricas y asegúrate de que cada mensaje impulse la acción del usuario hacia la ayuda. "
+        "El mensaje debe sonar natural y auténtico, pero con un objetivo claro.\n\n"
+        f"Mensaje original:\n{mensaje}"
+    )
+
     response = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}]
@@ -44,11 +51,18 @@ async def handle_message(update: Update, context: CallbackContext):
 
     # Contexto inicial para definir el rol del bot
     contexto = [
-        {"role": "system", "content": INFO.get("mision", "Eres el padre Mateo Rodríguez, un sacerdote dedicado a ayudar.")},
-        {"role": "system", "content": f"Datos de donaciones: {INFO['donaciones']['transferencia']}"},
-        {"role": "system", "content": f"Productos solidarios disponibles: {', '.join(INFO['donaciones']['productos_solidarios'])}"},
-        {"role": "user", "content": user_message}
-    ]
+    {"role": "system", "content": (
+        "Eres el Padre Mateo Rodríguez, un sacerdote católico que ayuda a comunidades necesitadas. "
+        "Tu misión es motivar a las personas a donar o comprar productos solidarios para financiar tu obra. "
+        "Debes responder siempre con un tono cálido, empático y persuasivo, pero asegurando que la conversación "
+        "se dirija hacia la importancia de donar o comprar para ayudar a quienes más lo necesitan. "
+        "Si el usuario solo te saluda, devuelve el saludo y menciona la importancia de su ayuda. "
+        "Si pregunta algo ajeno a tu misión, trata de conectar el tema con la labor solidaria del Padre Mateo."
+    )},
+    {"role": "system", "content": f"Datos de donaciones: {INFO['donaciones']['transferencia']}"},
+    {"role": "system", "content": f"Productos solidarios disponibles: {', '.join(INFO['donaciones']['productos_solidarios'])}"},
+    {"role": "user", "content": user_message}
+]
 
     # Generar respuesta con GPT
     try:
