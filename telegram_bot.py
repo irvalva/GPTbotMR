@@ -19,14 +19,18 @@ openai.api_key = OPENAI_API_KEY
 
 # Cargar respuestas desde el archivo JSON
 def cargar_respuestas():
-    with open("respuestas.json", "r", encoding="utf-8") as file:
-        return json.load(file)
+    try:
+        with open("respuestas.json", "r", encoding="utf-8") as file:
+            return json.load(file)
+    except Exception as e:
+        logging.error(f"Error al cargar respuestas.json: {e}")
+        return {}
 
 RESPUESTAS = cargar_respuestas()
 
 # Base de datos de nombres comunes por género
-NOMBRES_MASCULINOS = ["juan", "carlos", "pedro", "miguel", "luis", "manuel"]
-NOMBRES_FEMENINOS = ["maria", "ana", "luisa", "carmen", "sofia", "elena"]
+NOMBRES_MASCULINOS = ["juan", "carlos", "pedro", "miguel", "luis", "manuel", "gonzalo"]
+NOMBRES_FEMENINOS = ["maria", "ana", "luisa", "carmen", "sofia", "elena", "laura"]
 
 # Función para detectar género según el nombre
 def detectar_genero(nombre):
@@ -42,12 +46,12 @@ usuarios = {}
 
 async def handle_message(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
-    user_message = update.message.text
+    user_message = update.message.text.strip()
 
     # Si el usuario no ha dado su nombre, pedirlo
     if user_id not in usuarios:
         usuarios[user_id] = None  # Marcar que estamos esperando el nombre
-        await update.message.reply_text(RESPUESTAS.get("preguntar_nombre"))
+        await update.message.reply_text(RESPUESTAS.get("preguntar_nombre", "¡Bendiciones! 🙏 ¿Con quién tengo el gusto?"))
         return
 
     # Si el usuario está respondiendo con su nombre, guardarlo
@@ -58,16 +62,16 @@ async def handle_message(update: Update, context: CallbackContext):
 
         # Seleccionar la respuesta adecuada
         if genero == "masculino":
-            respuesta = RESPUESTAS.get("bienvenida_masculino", "").format(nombre=nombre)
+            respuesta = RESPUESTAS.get("bienvenida_masculino", "¡Bendiciones, hermano {nombre}! 🙏 ¿En qué puedo ayudarte hoy?").format(nombre=nombre)
         elif genero == "femenino":
-            respuesta = RESPUESTAS.get("bienvenida_femenino", "").format(nombre=nombre)
+            respuesta = RESPUESTAS.get("bienvenida_femenino", "¡Bendiciones, hermana {nombre}! 🙏 ¿En qué puedo ayudarte hoy?").format(nombre=nombre)
         else:
-            respuesta = RESPUESTAS.get("bienvenida_desconocido", "").format(nombre=nombre)
+            respuesta = RESPUESTAS.get("genero_no_determinado", "¡Bendiciones, {nombre}! 🙏 ¿En qué puedo ayudarte hoy?").format(nombre=nombre)
 
         await update.message.reply_text(respuesta)
         return
 
-    # Responder usando GPT-3.5 Turbo
+    # Responder usando GPT-3.5 Turbo si no hay respuesta en el JSON
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
