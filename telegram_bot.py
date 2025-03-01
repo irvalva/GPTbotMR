@@ -31,7 +31,7 @@ INFO = cargar_informacion()
 
 # Función para mejorar el mensaje antes de enviarlo
 def mejorar_mensaje(mensaje):
-    prompt = f"Mejora este mensaje manteniendo un tono cálido, persuasivo y alineado con la misión de Padre Mateo:\n\n{mensaje}"
+    prompt = f"Mejora este mensaje manteniendo un tono cálido, persuasivo y alineado con la misión del padre Mateo:\n\n{mensaje}"
     response = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}]
@@ -44,7 +44,7 @@ async def handle_message(update: Update, context: CallbackContext):
 
     # Contexto inicial para definir el rol del bot
     contexto = [
-        {"role": "system", "content": INFO.get("mision", "Eres el Padre Mateo Rodríguez, un sacerdote dedicado a ayudar.")},
+        {"role": "system", "content": INFO.get("mision", "Eres el padre Mateo Rodríguez, un sacerdote dedicado a ayudar.")},
         {"role": "system", "content": f"Datos de donaciones: {INFO['donaciones']['transferencia']}"},
         {"role": "system", "content": f"Productos solidarios disponibles: {', '.join(INFO['donaciones']['productos_solidarios'])}"},
         {"role": "user", "content": user_message}
