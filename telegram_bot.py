@@ -26,7 +26,7 @@ async def handle_message(update: Update, context: CallbackContext):
 
     try:
         # Enviar mensaje a OpenAI ChatGPT
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": user_message}]
         )
