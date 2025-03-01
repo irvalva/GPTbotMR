@@ -3,6 +3,7 @@ import json
 import logging
 import asyncio
 import openai
+from difflib import get_close_matches
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CallbackContext
@@ -18,71 +19,131 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Configurar OpenAI
 openai.api_key = OPENAI_API_KEY
 
-# Cargar información adicional desde JSON
-def cargar_informacion():
+# Cargar respuestas y datos adicionales
+def cargar_json(nombre_archivo):
     try:
-        with open("informacion.json", "r", encoding="utf-8") as file:
+        with open(nombre_archivo, "r", encoding="utf-8") as file:
             return json.load(file)
     except Exception as e:
-        logging.error(f"Error al cargar informacion.json: {e}")
+        logging.error(f"Error al cargar {nombre_archivo}: {e}")
         return {}
 
-INFO = cargar_informacion()
+RESPUESTAS = cargar_json("respuestas.json")
+INFO = cargar_json("informacion.json")
 
-# Función para mejorar el mensaje antes de enviarlo
+# Base de datos de nombres comunes por género
+NOMBRES_MASCULINOS = ["juan", "carlos", "pedro", "miguel", "luis", "manuel", "gonzalo"]
+NOMBRES_FEMENINOS = ["maria", "ana", "luisa", "carmen", "sofia", "elena", "laura"]
+
+# Diccionario para almacenar los nombres de los usuarios
+usuarios = {}
+
+# Función para detectar el género del usuario
+def detectar_genero(nombre):
+    nombre = nombre.lower()
+    if nombre in NOMBRES_MASCULINOS:
+        return "masculino"
+    elif nombre in NOMBRES_FEMENINOS:
+        return "femenino"
+
+    # Consultar a GPT si el nombre no está en la base
+    response = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": f"¿El nombre '{nombre}' es masculino o femenino? Responde solo con 'masculino' o 'femenino', si no estás seguro responde 'desconocido'."}]
+    )
+    return response.choices[0].message.content.strip().lower()
+
+# Función para encontrar respuestas similares en respuestas.json
+def encontrar_respuesta_cercana(pregunta, umbral=0.6):
+    preguntas_disponibles = list(RESPUESTAS.keys())
+    coincidencias = get_close_matches(pregunta, preguntas_disponibles, n=1, cutoff=umbral)
+    if coincidencias:
+        return RESPUESTAS.get(coincidencias[0])
+    return None
+
+# Función para mejorar la respuesta antes de enviarla
 def mejorar_mensaje(mensaje):
     prompt = (
         "Mejora este mensaje asegurando que sea cálido, persuasivo y que motive a donar o comprar productos solidarios. "
-        "Evita respuestas genéricas y asegúrate de que cada mensaje impulse la acción del usuario hacia la ayuda. "
-        "El mensaje debe sonar natural y auténtico, pero con un objetivo claro.\n\n"
+        "Evita respuestas genéricas y hazlo más directo y efectivo.\n\n"
         f"Mensaje original:\n{mensaje}"
     )
-
     response = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}]
     )
     return response.choices[0].message.content.strip()
 
-# Función para procesar mensajes
+# Función principal para manejar mensajes
 async def handle_message(update: Update, context: CallbackContext):
-    user_message = update.message.text.strip()
+    user_id = update.message.from_user.id
+    user_message = update.message.text.strip().lower()
 
-    # Contexto inicial para definir el rol del bot
-    contexto = [
-    {"role": "system", "content": (
-        "Eres el Padre Mateo Rodríguez, un sacerdote católico que ayuda a comunidades necesitadas. "
-        "Tu misión es motivar a las personas a donar o comprar productos solidarios para financiar tu obra. "
-        "Debes responder siempre con un tono cálido, empático y persuasivo, pero asegurando que la conversación "
-        "se dirija hacia la importancia de donar o comprar para ayudar a quienes más lo necesitan. "
-        "Si el usuario solo te saluda, devuelve el saludo y menciona la importancia de su ayuda. "
-        "Si pregunta algo ajeno a tu misión, trata de conectar el tema con la labor solidaria del Padre Mateo."
-    )},
-    {"role": "system", "content": f"Datos de donaciones: {INFO['donaciones']['transferencia']}"},
-    {"role": "system", "content": f"Productos solidarios disponibles: {', '.join(INFO['donaciones']['productos_solidarios'])}"},
-    {"role": "user", "content": user_message}
-]
+    # Preguntar el nombre si es la primera vez que escribe
+    if user_id not in usuarios:
+        usuarios[user_id] = None  # Marcar que estamos esperando el nombre
+        await update.message.reply_text(RESPUESTAS.get("preguntar_nombre", "¡Bendiciones! 🙏 ¿Con quién tengo el gusto?"))
+        return
 
-    # Generar respuesta con GPT
-    try:
+    # Si el usuario está respondiendo con su nombre, guardarlo
+    if usuarios[user_id] is None:
+        palabras = user_message.split()
+        nombre = ""
+
+        # Detectar el nombre en frases como "Soy Lucía" o "Me llamo Lucía"
+        if "soy" in palabras:
+            nombre = palabras[palabras.index("soy") + 1]
+        elif "me" in palabras and "llamo" in palabras:
+            nombre = palabras[palabras.index("llamo") + 1]
+        else:
+            nombre = palabras[0]  # Si no detecta, tomar la primera palabra
+
+        genero = detectar_genero(nombre)
+        usuarios[user_id] = {"nombre": nombre, "genero": genero}
+
+        # Seleccionar la respuesta adecuada
+        if genero == "masculino":
+            respuesta = RESPUESTAS.get("bienvenida_masculino", "¡Bendiciones, hermano {nombre}! 🙏 ¿En qué puedo ayudarte hoy?").format(nombre=nombre)
+        elif genero == "femenino":
+            respuesta = RESPUESTAS.get("bienvenida_femenino", "¡Bendiciones, hermana {nombre}! 🙏 ¿En qué puedo ayudarte hoy?").format(nombre=nombre)
+        else:
+            respuesta = RESPUESTAS.get("genero_no_determinado", "¡Bendiciones, {nombre}! 🙏 ¿En qué puedo ayudarte hoy?").format(nombre=nombre)
+
+        await update.message.reply_text(respuesta)
+        return
+
+    # Buscar respuesta en el JSON con coincidencia aproximada
+    respuesta = encontrar_respuesta_cercana(user_message)
+
+    if respuesta:
+        respuesta = mejorar_mensaje(respuesta)
+    else:
+        # Si no hay respuesta en el JSON, generar respuesta con GPT usando el contenido de respuestas.json
+        contexto = [
+            {"role": "system", "content": f"Eres el padre Mateo Rodríguez, un sacerdote católico dedicado a ayudar a comunidades necesitadas. "
+                                          "Tu misión es motivar a las personas a donar o comprar productos solidarios de manera cálida, empática y persuasiva, si la persona necesita ser atendido puedes hacerlo con la personalidad de un padre catolico y bendecirlo, pero siempre la intencion sera hacer que las personas donen o compren los productos solidarios. "
+                                          "Utiliza respuestas similares a las siguientes en tus respuestas para mantener coherencia:"},
+            {"role": "system", "content": json.dumps(RESPUESTAS, ensure_ascii=False)},  # Pasamos el JSON como referencia
+            {"role": "system", "content": f"Datos de donaciones: {INFO['donaciones']['transferencia']}"},
+            {"role": "system", "content": f"Productos solidarios disponibles: {', '.join(INFO['donaciones']['productos_solidarios'])}"},
+            {"role": "user", "content": user_message}
+        ]
+        
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=contexto
         )
         respuesta = response.choices[0].message.content
 
-        # Mejorar el mensaje antes de enviarlo
-        respuesta = mejorar_mensaje(respuesta)
+    # Asegurar que la respuesta sea más corta
+    if len(respuesta) > 300:
+        respuesta = respuesta[:300] + "..."  # Cortar y hacer más directa
 
-        # Calcular retraso según la longitud del mensaje
-        retraso = min(1.5 + (len(respuesta) / 100), 5)
-        await asyncio.sleep(retraso)
+    # Calcular retraso según la longitud del mensaje
+    retraso = min(1.5 + (len(respuesta) / 100), 5)
+    await asyncio.sleep(retraso)
 
-        await update.message.reply_text(respuesta)
-
-    except Exception as e:
-        logging.error(f"Error al procesar el mensaje: {e}")
-        await update.message.reply_text("Lo siento, hubo un error al procesar tu mensaje. 😢")
+    await update.message.reply_text(respuesta)
 
 # Iniciar el bot
 def main():
