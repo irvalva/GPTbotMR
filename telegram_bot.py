@@ -31,7 +31,6 @@ INFO = cargar_informacion()
 
 # Función para mejorar el mensaje antes de enviarlo
 def mejorar_mensaje(mensaje):
-    def mejorar_mensaje(mensaje):
     prompt = (
         "Mejora este mensaje asegurando que sea cálido, persuasivo y que motive a donar o comprar productos solidarios. "
         "Evita respuestas genéricas y asegúrate de que cada mensaje impulse la acción del usuario hacia la ayuda. "
