@@ -19,7 +19,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Configurar OpenAI
 openai.api_key = OPENAI_API_KEY
 
-# Cargar respuestas y datos adicionales
+# Cargar datos desde JSON
 def cargar_json(nombre_archivo):
     try:
         with open(nombre_archivo, "r", encoding="utf-8") as file:
@@ -31,14 +31,15 @@ def cargar_json(nombre_archivo):
 RESPUESTAS = cargar_json("respuestas.json")
 INFO = cargar_json("informacion.json")
 
+# Diccionario para almacenar los nombres y el historial de conversación de los usuarios
+usuarios = {}
+historial_conversacion = {}
+
 # Base de datos de nombres comunes por género
 NOMBRES_MASCULINOS = ["juan", "carlos", "pedro", "miguel", "luis", "manuel", "gonzalo"]
 NOMBRES_FEMENINOS = ["maria", "ana", "luisa", "carmen", "sofia", "elena", "laura"]
 
-# Diccionario para almacenar los nombres de los usuarios
-usuarios = {}
-
-# Función para detectar el género del usuario
+# Función para detectar género
 def detectar_genero(nombre):
     nombre = nombre.lower()
     if nombre in NOMBRES_MASCULINOS:
@@ -53,7 +54,7 @@ def detectar_genero(nombre):
     )
     return response.choices[0].message.content.strip().lower()
 
-# Función para encontrar respuestas similares en respuestas.json
+# Función para encontrar respuestas similares en `respuestas.json`
 def encontrar_respuesta_cercana(pregunta, umbral=0.6):
     preguntas_disponibles = list(RESPUESTAS.keys())
     coincidencias = get_close_matches(pregunta, preguntas_disponibles, n=1, cutoff=umbral)
@@ -112,20 +113,26 @@ async def handle_message(update: Update, context: CallbackContext):
         await update.message.reply_text(respuesta)
         return
 
+    # Guardar historial corto de la conversación
+    historial_conversacion[user_id] = historial_conversacion.get(user_id, "") + f"Usuario: {user_message}\n"
+
     # Buscar respuesta en el JSON con coincidencia aproximada
     respuesta = encontrar_respuesta_cercana(user_message)
 
     if respuesta:
         respuesta = mejorar_mensaje(respuesta)
     else:
-        # Si no hay respuesta en el JSON, generar respuesta con GPT usando el contenido de respuestas.json
+        # Si no hay respuesta en el JSON, generar respuesta con GPT usando el historial
         contexto = [
-            {"role": "system", "content": f"Eres el padre Mateo Rodríguez, un sacerdote católico dedicado a ayudar a comunidades necesitadas. "
-                                          "Tu misión es motivar a las personas a donar o comprar productos solidarios de manera cálida, empática y persuasiva, si la persona necesita ser atendido puedes hacerlo con la personalidad de un padre catolico y bendecirlo, pero siempre la intencion sera hacer que las personas donen o compren los productos solidarios. "
-                                          "Utiliza respuestas similares a las siguientes en tus respuestas para mantener coherencia:"},
-            {"role": "system", "content": json.dumps(RESPUESTAS, ensure_ascii=False)},  # Pasamos el JSON como referencia
-            {"role": "system", "content": f"Datos de donaciones: {INFO['donaciones']['transferencia']}"},
-            {"role": "system", "content": f"Productos solidarios disponibles: {', '.join(INFO['donaciones']['productos_solidarios'])}"},
+            {"role": "system", "content": (
+                "Eres el Padre Mateo Rodríguez, un sacerdote católico dedicado a ayudar a comunidades necesitadas. "
+                "Tu misión es motivar a las personas a donar o comprar productos solidarios de manera cálida, empática y persuasiva. "
+                "Debes responder de manera natural, sin reiniciar la conversación ni repetir saludos si ya has hablado con la persona. "
+                "Si alguien menciona un problema, responde con empatía pero relacionando la solución con la importancia de ayudar a los demás. "
+                "Siempre mantén la conversación en continuidad."
+            )},
+            {"role": "system", "content": json.dumps(RESPUESTAS, ensure_ascii=False)},
+            {"role": "assistant", "content": historial_conversacion[user_id]},
             {"role": "user", "content": user_message}
         ]
         
@@ -134,10 +141,6 @@ async def handle_message(update: Update, context: CallbackContext):
             messages=contexto
         )
         respuesta = response.choices[0].message.content
-
-    # Asegurar que la respuesta sea más corta
-    if len(respuesta) > 300:
-        respuesta = respuesta[:300] + "..."  # Cortar y hacer más directa
 
     # Calcular retraso según la longitud del mensaje
     retraso = min(1.5 + (len(respuesta) / 100), 5)
