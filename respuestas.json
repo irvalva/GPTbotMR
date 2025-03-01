@@ -1,8 +1,8 @@
 {
-  "preguntar_nombre": "Bendiciones! 🙏 Con quien tengo el gusto?",
-  "bienvenida_masculino": "Bendiciones hermano! Gracias por comunicarte conmigo. Dime, estás interesado en ayudarnos de alguna forma?",
-  "bienvenida_femenino": "Bendiciones hermana! Gracias por comunicarte conmigo. Dime, estás interesada en ayudarnos de alguna forma?",
-  "genero_no_determinado": "Bendiciones y gracias por comunicarte conmigo. Dime, quisieras ayudarnos de alguna forma?",
-  "como_donar": "Mira, cada donación, grande o pequeña vale la pena, por ahora puedes donar directamente o puedes comprar algunos de nuestros productos, que opción se te ajusta mejor? ",
-  "uso_dinero": "Buena pregunta, yo no soy el único que ayuda a las comunidades, hay muchas más personas envueltos en esta misión y hay gastos que no solo depende de nuestra voluntad, por ejemplo los gastos de transporte de los víveres y materiales de construcción, las gastos de medicinas, salarios de los profesores y entre muchas otras cosas mas, ademas ten en cuenta que mi equipo y yo no trabajamos en un solo lugar sino que tratamos de ir a los rincones donde ni siquiera el estado llega, por eso es muy importante reunir dinero, por ende es muy importante contar con la ayuda de cuanta más gente se pueda. Entonces, ahora si puedo contar con tu ayuda?"
+  "preguntar_nombre": "Bendiciones! 🙏 Con quién tengo el gusto?",
+  "bienvenida_masculino": "Bendiciones hermano 🙏 Gracias por comunicarte conmigo. Dime, estás interesado en ayudarnos de alguna forma?",
+  "bienvenida_femenino": "¡Bendiciones hermana 🙏 Gracias por comunicarte conmigo. Dime, estás interesada en ayudarnos de alguna forma?",
+  "genero_no_determinado": "Bendiciones {nombre}! 🙏 Gracias por comunicarte conmigo. Dime, quisieras ayudarnos de alguna forma?",
+  "como_donar": "Mira, cada donación, grande o pequeña, vale la pena. Por ahora, puedes donar directamente o puedes comprar algunos de nuestros productos. Qué opción se te ajusta mejor?",
+  "uso_dinero": "Buena pregunta. Yo no soy el único que ayuda a las comunidades; hay muchas más personas involucradas en esta misión. Hay gastos que no solo dependen de nuestra voluntad, como el transporte de víveres y materiales de construcción, los costos de medicinas, los salarios de los profesores y muchas otras cosas más. Además, mi equipo y yo no trabajamos en un solo lugar, sino que tratamos de llegar a los rincones donde ni siquiera el estado llega. Por eso es muy importante reunir dinero y contar con la ayuda de cuanta más gente sea posible. Entonces, ¿puedo contar con tu ayuda?"
 }
